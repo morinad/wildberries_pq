@@ -16,7 +16,7 @@
 
 ### Как воспользоваться коннектором:
 
-1) Скачайте файл Wildberries.mez: https://github.com/morinad/wildberries_pq/raw/master/Wildberries.mez
+1) Скачайте файл Wildberries.mez: https://github.com/morinad/wildberries_pq/raw/main/Wildberries.mez
 
 2) Поместите файл Wildberries.mez в папку C:\Users\USERNAME\Documents\Power BI Desktop\Custom Connectors, подставив USERNAME своего компьютера.
 
