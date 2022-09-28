@@ -1,8 +1,10 @@
 # Коннектор к системе Wildberries для Power BI
 
-### Наши курсы:
+### Курсы для начинающих:
 1) Основы Power BI: https://directprorf.ru/basics?utm_source=github
-2) Из API в Excel и Power BI + коннекторы: https://directprorf.ru/excel?utm_source=github
+2) Из API -> в Excel и Power BI + коннекторы-функции: https://directprorf.ru/excel?utm_source=github
+
+### Продвинутые курсы:
 3) Продвинутый Power Query: https://directprorf.ru/pro?utm_source=github
 4) Создание коннекторов в Power Query: https://directprorf.ru/connectors?utm_source=github
 
