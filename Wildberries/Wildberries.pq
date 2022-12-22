@@ -103,7 +103,7 @@ let
 
     ostatki=
     let
-        web=Json.Document(Web.Contents("https://suppliers-stats.wildberries.ru/", [RelativePath = "api/v1/supplier/stocks", Headers=[#"Content-Type"="application/json"], Query=[#"key"=apiKey, #"dateFrom"=start]])),
+        web=Json.Document(Web.Contents("https://statistics-api.wildberries.ru/", [RelativePath = "api/v1/supplier/stocks", Headers=[#"Authorization"= apiKey, #"Content-Type"="application/json"], Query=[#"dateFrom"=start]])),
         columns = List.Distinct(List.Combine(List.Transform(web, each Record.FieldNames(_)))),
         #"Преобразовано в таблицу" = Table.FromList(web, Splitter.SplitByNothing(), null, null, ExtraValues.Error),
         #"Развернутый элемент Column1" = Table.ExpandRecordColumn(#"Преобразовано в таблицу", "Column1", columns, columns),
@@ -117,7 +117,7 @@ let
 
     postavki = 
     let
-        web=Json.Document(Web.Contents("https://suppliers-stats.wildberries.ru/", [RelativePath = "api/v1/supplier/incomes",  Headers=[#"Content-Type"="application/json"], Query=[#"key"=apiKey, #"dateFrom"=start]])),
+        web=Json.Document(Web.Contents("https://statistics-api.wildberries.ru/", [RelativePath = "api/v1/supplier/incomes",  Headers=[#"Authorization"= apiKey, #"Content-Type"="application/json"], Query=[ #"dateFrom"=start]])),
         columns = List.Distinct(List.Combine(List.Transform(web, each Record.FieldNames(_)))),
         #"Преобразовано в таблицу" = Table.FromList(web, Splitter.SplitByNothing(), null, null, ExtraValues.Error),
         #"Развернутый элемент Column1" = Table.ExpandRecordColumn(#"Преобразовано в таблицу", "Column1", columns, columns),
@@ -154,7 +154,7 @@ dateFunc = (dat)=>
 getOrdersFunc = (apiKey as text, dateFr as date, dateTo as date, delay as text)=> 
     let
         dateFrom = Date.ToText(dateFr,"yyyy-MM-dd"),
-        web = Function.InvokeAfter(()=>Json.Document(Web.Contents("https://suppliers-stats.wildberries.ru/api/v1/supplier/orders", [Headers=[#"Content-Type"="application/json"], Query=[#"key"=apiKey, #"dateFrom"=dateFrom]])), #duration(0,0,0,Number.From(delay))),
+        web = Function.InvokeAfter(()=>Json.Document(Web.Contents("https://statistics-api.wildberries.ru/api/v1/supplier/orders", [Headers=[#"Authorization"= apiKey, #"Content-Type"="application/json"], Query=[#"dateFrom"=dateFrom]])), #duration(0,0,0,Number.From(delay))),
         columnList = List.Distinct(Record.FieldNames(web{0})),
         recordsFromList = Table.FromList(web, Splitter.SplitByNothing(), null, null, ExtraValues.Error),
         tableFromRecords = Table.ExpandRecordColumn(recordsFromList, "Column1", columnList, columnList),
@@ -170,7 +170,7 @@ getOrdersFunc = (apiKey as text, dateFr as date, dateTo as date, delay as text)=
 getSalesFunc = (apiKey as text, dateFr as date, dateTo as date, delay as text)=> 
     let
         dateFrom = Date.ToText(dateFr,"yyyy-MM-dd"),
-        web = Function.InvokeAfter(()=>Json.Document(Web.Contents("https://suppliers-stats.wildberries.ru/api/v1/supplier/sales", [Headers=[#"Content-Type"="application/json"], Query=[#"key"=apiKey, #"dateFrom"=dateFrom]])), #duration(0,0,0,Number.From(delay))),
+        web = Function.InvokeAfter(()=>Json.Document(Web.Contents("https://statistics-api.wildberries.ru/api/v1/supplier/sales", [Headers=[#"Authorization"= apiKey, #"Content-Type"="application/json"], Query=[#"dateFrom"=dateFrom]])), #duration(0,0,0,Number.From(delay))),
         columnList =  List.Distinct(Record.FieldNames(web{0})),
         recordsFromList = Table.FromList(web, Splitter.SplitByNothing(), null, null, ExtraValues.Error),
         tableFromRecords = Table.ExpandRecordColumn(recordsFromList, "Column1", columnList, columnList), 
@@ -195,8 +195,8 @@ reportDetailByPeriod = (apiKey as text, dateFr as date, dateTo as date, delay as
     let
         dateFrom = Date.ToText(dateFr,"yyyy-MM-dd"),
         dateToText = Date.ToText(dateTo,"yyyy-MM-dd"),
-        web = Function.InvokeAfter(()=>Json.Document(Web.Contents("https://suppliers-stats.wildberries.ru/api/v1/supplier/reportDetailByPeriod", 
-        [Headers=[#"Content-Type"="application/json"], Query=[#"key"=apiKey, #"dateFrom"=dateFrom, #"dateto"=dateToText]])), #duration(0,0,0,Number.From(delay))),
+        web = Function.InvokeAfter(()=>Json.Document(Web.Contents("https://statistics-api.wildberries.ru/api/v1/supplier/reportDetailByPeriod", 
+        [Headers=[#"Authorization"= apiKey, #"Content-Type"="application/json"], Query=[#"dateFrom"=dateFrom, #"dateto"=dateToText]])), #duration(0,0,0,Number.From(delay))),
         columnList =  List.Distinct(Record.FieldNames(web{0})),
         recordsFromList = Table.FromList(web, Splitter.SplitByNothing(), null, null, ExtraValues.Error),
         tableFromRecords = Table.ExpandRecordColumn(recordsFromList, "Column1", columnList, columnList),   
