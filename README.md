@@ -32,4 +32,4 @@
 Выбрвав коннектор, укажите необходимые параметры подключения.
 
 ### Полезные ссылки:
-Справка API: https://suppliers-api.wildberries.ru/swagger/index.html
+Справка API: https://openapi.wildberries.ru/
