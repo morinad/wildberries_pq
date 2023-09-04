@@ -13,7 +13,7 @@
 3) Продвинутый Power Query: https://directprorf.ru/pro?utm_source=github
 4) Создание коннекторов в Power Query: https://directprorf.ru/connectors?utm_source=github
 
-### 5 типов отчётов:
+### 6 типов отчётов:
 - Остатки
 - Поставки
 - Заказы
