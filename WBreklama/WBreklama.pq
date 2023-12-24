@@ -18,34 +18,44 @@ FuncType = type function (
     [
         Documentation.FieldCaption = "Дата окончания:",
         Documentation.SampleValues = {"yesterday"}
+    ]),
+
+    delay as (type nullable text meta 
+    [
+        Documentation.FieldCaption = "Задержка между запросами (сек):",
+        Documentation.SampleValues = {"0.3"}
     ])
+
 
     )
     as table meta [
         Documentation.Name = "Забираем данные по рекламе WildBerries",
         Documentation.LongDescription =  "",
-        Documentation.Examples = {
-        [
-            
-        ]
-        }
+        Documentation.Examples = {[ ]}
     ];
 
 
 
-WBreklama.Func =    (start as text, finish as text)=>
+WBreklama.Func =  (start as text, finish as text, delay as nullable text)=>
 let
+del = if delay = null then "0,3" else Text.Replace(delay, ".",","),
 headers = [#"Authorization" = Extension.CurrentCredential()[Key]],
-web = Web.Contents("https://advert-api.wb.ru", [IsRetry  = true, RelativePath = "adv/v0/adverts", Headers = headers, ManualStatusHandling = {404, 400}]),
+web = Web.Contents("https://advert-api.wb.ru", [IsRetry  = true, RelativePath = "adv/v1/promotion/count", Headers = headers, ManualStatusHandling = {404, 400}]),
 result = Json.Document(web, 65001),
-totable = Table.FromList(result, Splitter.SplitByNothing(), null, null, ExtraValues.Error),
-expand = Table.ExpandRecordColumn(totable, "Column1", {"advertId", "name", "type", "status"}, {"advertId", "name", "type", "status"}),
-chtype = Table.TransformColumnTypes(expand,{{"advertId", type text}, {"name", type text}, {"type", type text}, {"status", type text}}),
-#"Добавлен пользовательский объект" = Table.AddColumn(chtype, "data", each getData([advertId], dateFunc(start), dateFunc(finish) )),
-#"Переименованные столбцы" = Table.RenameColumns(#"Добавлен пользовательский объект",{{"advertId", "campaign_id"}, {"name","campaign_name"}}),
-listexp = List.Select(List.Accumulate( #"Переименованные столбцы"[data], {}, (st,cr) => List.Distinct(st & Record.FieldNames(cr))), each _<>"advertId" and _<>"begin" and _<>"end"),
-expall = Table.ExpandRecordColumn(#"Переименованные столбцы", "data", listexp, listexp)
-in  expall;
+adverts = result[adverts],
+#"Преобразовано в таблицу" = Table.FromList(adverts, Splitter.SplitByNothing(), null, null, ExtraValues.Error),
+#"Развернутый элемент Column1" = Table.ExpandRecordColumn(#"Преобразовано в таблицу", "Column1", {"type", "status", "count", "advert_list"}, {"type", "status", "count", "advert_list"}),
+#"Развернутый элемент advert_list" = Table.ExpandListColumn(#"Развернутый элемент Column1", "advert_list"),
+#"Развернутый элемент advert_list1" = Table.ExpandRecordColumn(#"Развернутый элемент advert_list", "advert_list", {"advertId", "changeTime"}, {"advertId", "changeTime"}),
+rename = Table.RenameColumns(#"Развернутый элемент advert_list1" ,{{"advertId", "campaignId"}}),
+delete = Table.SelectColumns(rename, {"campaignId"}),
+addData =  Table.AddColumn(delete, "data", each getData(Text.From([campaignId]), dateFunc(start), dateFunc(finish), del)),
+addNames = Table.AddColumn(addData, "names", each getNames(Text.From([campaignId]),del)),
+explist = Table.ExpandListColumn(addNames, "names"),
+expand = Table.ExpandRecordColumn(explist, "names", Record.FieldNames(explist{0}[names]), Record.FieldNames(explist{0}[names])),
+explist2 =  Table.ExpandListColumn(expand, "data"),
+explist3 =  Table.ExpandListColumn(explist2, "params")
+in  explist3;
 
 
 
@@ -56,25 +66,34 @@ dateFunc = (dat)=>
         else dat;
 
 
-getData = (campaign_id,  start, finish)=>
+getData = (campaign_id as text, begin as text, end as text, del as text )=>
 let
 headers=[#"Authorization" = Extension.CurrentCredential()[Key]],
-querydata = [#"id" = campaign_id, #"begin" = start, #"end" = finish],
-web = Web.Contents("https://advert-api.wb.ru", [RelativePath = "adv/v1/fullstat", Headers = headers, ManualStatusHandling = {404, 400}, Query = querydata]),
+jsondata = Json.FromValue( {[#"id"= Number.From(campaign_id), #"interval"= [begin = begin, end = end]]}),
+web =  Function.InvokeAfter(()=>  Web.Contents("https://advert-api.wb.ru", [RelativePath = "adv/v2/fullstats", Content = jsondata, Headers = headers, ManualStatusHandling = {404, 400}]), #duration(0,0,0,Number.From(del))),
+result = Json.Document(web)
+in result;
+
+
+getNames = (campaign_id as text, del as text)=>
+let
+headers=[#"Authorization" = Extension.CurrentCredential()[Key]],
+jsondata = Json.FromValue( {Number.From(campaign_id)}),
+web =  Function.InvokeAfter(()=> Web.Contents("https://advert-api.wb.ru", [RelativePath = "adv/v1/promotion/adverts", Content = jsondata, Headers = headers, ManualStatusHandling = {404, 400}]), #duration(0,0,0,Number.From(del))),
 result = Json.Document(web)
 in result;
 
 
 WBreklama = [
     TestConnection = (dataSourcePath) => 
-        { "WBreklama.Data", 
+        {"WBreklama.Data", 
         Json.Document(dataSourcePath)[start], 
-        Json.Document(dataSourcePath)[finish]
+        Json.Document(dataSourcePath)[finish],
+        Json.Document(dataSourcePath)[delay]?
         },
+
     Authentication = [
-        
          Key = []
-   
     ],
     Label = "WBreklama Connection"
 ];
