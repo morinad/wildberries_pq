@@ -57,20 +57,21 @@ adverts = result[adverts],
 #"Развернутый элемент advert_list1" = Table.ExpandRecordColumn(#"Развернутый элемент advert_list", "advert_list", {"advertId", "changeTime"}, {"advertId", "changeTime"}),
 #"Измененный тип" = Table.TransformColumnTypes(#"Развернутый элемент advert_list1",{{"status", Int64.Type}, {"advertId", Int64.Type}}),
 #"Строки с примененным фильтром" = if status = "Активные" then Table.SelectRows(#"Измененный тип", each [status] = 9) else #"Измененный тип",
-rename = Table.RenameColumns(#"Строки с примененным фильтром" , {{"advertId", "campaignId"}}),
+rename = Table.RenameColumns(#"Строки с примененным фильтром", {{"advertId", "campaignId"}}),
 delete = Table.SelectColumns(rename, {"campaignId"}),
-index = Table.AddIndexColumn(delete, "Индекс", 0, 1, Int64.Type),
-delenie = Table.AddColumn(index, "Запрос", each Number.IntegerDivide([Индекс], 50), Int64.Type),
-delete2 = Table.RemoveColumns(delenie,{"Индекс"}),
-group = Table.Group(delete2, {"Запрос"}, {{"Кампании", each _[campaignId]}}),
-addBody = Table.AddColumn(group, "Тело", each List.Transform([Кампании], each [id = _, interval = [begin = dateFunc(start), end = dateFunc(finish)]])),
-addNames = Table.AddColumn(addBody, "campaign", each getNames([Кампании])),
-addData =  Table.AddColumn(addNames, "data", each if [Запрос]=0 then getData([Тело]) else Function.InvokeAfter(()=> getData([Тело]), #duration(0,0,0,del))   ),
-delete3 = Table.RemoveColumns(addData,{"Запрос", "Кампании", "Тело"}),
-expNames = Table.ExpandTableColumn(Table.SelectColumns(delete3,{"campaign"}), "campaign", {"endTime", "createTime", "changeTime", "startTime", "name", "params", "dailyBudget", "advertId", "status", "type"}, {"endTime", "createTime", "changeTime", "startTime", "name", "params", "dailyBudget", "campaignId", "status", "type"}),
-expData = Table.ExpandRecordColumn(Table.ExpandListColumn(Table.SelectColumns(delete3,{"data"}), "data"), "data", {"interval", "views", "clicks", "ctr", "cpc", "sum", "atbs", "orders", "cr", "shks", "sum_price", "days", "advertId"}, {"interval", "views", "clicks", "ctr", "cpc", "sum", "atbs", "orders", "cr", "shks", "sum_price", "days", "advertId"}),
-join = Table.Join(expData, "advertId" , expNames, "campaignId" , JoinKind.FullOuter)
-in join;
+
+step1 = getAll(delete, 0, del, start, finish),
+more1 = Table.SelectColumns(Table.SelectRows(step1, each [advertId] = null and [campaignId] <> null),{"campaignId"}),
+step2 = getAll(more1,10, del, start, finish),
+more2 = Table.SelectColumns(Table.SelectRows(step2, each [advertId] = null and [campaignId] <> null),{"campaignId"}),
+step3 = getAll(more2,20, del, start, finish),
+more3 = Table.SelectColumns(Table.SelectRows(step3, each [advertId] = null and [campaignId] <> null),{"campaignId"}),
+step4 = getAll(more3,30, del, start, finish),
+more4 = Table.SelectColumns(Table.SelectRows(step4, each [advertId] = null and [campaignId] <> null),{"campaignId"}),
+step5 = getAll(more4,45, del, start, finish),
+all = step1 & step2 & step3 & step4,
+filt = Table.SelectRows(all, each [advertId] <> null ) & step5
+in filt;
 
 
 
@@ -101,6 +102,29 @@ result = Json.Document(web),
 #"Развернутый элемент Column2" = Table.ExpandRecordColumn(#"Преобразовано в таблицу1", "Column1", {"endTime", "createTime", "changeTime", "startTime", "name", "params", "dailyBudget", "advertId", "status", "type"}, {"endTime", "createTime", "changeTime", "startTime", "name", "params", "dailyBudget", "advertId", "status", "type"}),
 #"Измененный тип1" = Table.TransformColumnTypes(#"Развернутый элемент Column2",{{"advertId", Int64.Type}})
 in #"Измененный тип1";
+
+
+getAll = (tbl, pause, del as text, start as text, finish as text)=>
+let 
+    count = Table.RowCount(tbl),
+    pau = if count = 0 then 0 else pause,
+    maindel = if pause = 0 then Number.From(del) else Number.From(pau),
+    index = Table.AddIndexColumn(tbl, "Индекс", 0, 1, Int64.Type),
+    delenie = Table.AddColumn(index, "Запрос", each Number.IntegerDivide([Индекс], 50), Int64.Type),
+    delete2 = Table.RemoveColumns(delenie,{"Индекс"}),
+    group = Table.Group(delete2, {"Запрос"}, {{"Кампании", each _[campaignId]}}),
+    addBody = Table.AddColumn(group, "Тело", each List.Transform([Кампании], each [id = _, interval = [begin = dateFunc(start), end = dateFunc(finish)]])),
+    addNames = Table.AddColumn(addBody, "campaign", each getNames([Кампании])),
+    addData =  Table.AddColumn(addNames, "data", each if [Запрос]=0 then Function.InvokeAfter(()=> getData([Тело]), #duration(0,0,0,Number.From(pau)))  else 
+    Function.InvokeAfter(()=> getData([Тело]), #duration(0,0,0,Number.From(maindel)))),
+    delete3 = Table.RemoveColumns(addData,{"Запрос", "Кампании", "Тело"}),
+    expNames = Table.ExpandTableColumn(Table.SelectColumns(delete3,{"campaign"}), "campaign", {"endTime", "createTime", "changeTime", "startTime", "name", "params", "dailyBudget", "advertId", "status", "type"}, {"endTime", "createTime", "changeTime", "startTime", "name", "params", "dailyBudget", "campaignId", "status", "type"}),
+    expData = Table.ExpandRecordColumn(Table.ExpandListColumn(Table.SelectColumns(delete3,{"data"}), "data"), "data", {"interval", "views", "clicks", "ctr", "cpc", "sum", "atbs", "orders", "cr", "shks", "sum_price", "days", "advertId"}, {"interval", "views", "clicks", "ctr", "cpc", "sum", "atbs", "orders", "cr", "shks", "sum_price", "days", "advertId"}),
+    join = Table.Join(expData, "advertId" , expNames, "campaignId" , JoinKind.FullOuter),
+    chtype = Table.TransformColumnTypes(join,{{"campaignId", Int64.Type}})
+in chtype;
+
+
 
 
 WBreklama = [
